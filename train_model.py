@@ -1,5 +1,4 @@
 # loads matchup_features.csv, splits, trains RF, saves model.pkl
-
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split

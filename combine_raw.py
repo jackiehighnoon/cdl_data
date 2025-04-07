@@ -1,18 +1,13 @@
 import pandas as pd
 from pathlib import Path
-from collections import defaultdict
 
-RAW_DIR = Path("raw_tables")
+""" RAW_DIR = Path("raw_tables")
 CLEAN_DIR = Path("processed")
 CLEAN_DIR.mkdir(exist_ok=True)
-
-meta_df   = pd.read_csv(RAW_DIR / "meta.csv", parse_dates=["date_utc"])
-team_df   = pd.read_csv(RAW_DIR / "team_series.csv")
-player_df = pd.read_csv(RAW_DIR / "player_stats.csv")
-
-meta_df["dayofweek"] = meta_df["date_utc"].dt.dayofweek
-meta_df["hour"] = meta_df["date_utc"].dt.hour             
-meta_df["is_weekend"] = meta_df["dayofweek"].isin([5, 6])
+"""
+meta_df   = pd.read_csv(RAW_DIR / "meta_validation_set.csv", parse_dates=["date_utc"])
+team_df   = pd.read_csv(RAW_DIR / "team_series_validation_set.csv")
+player_df = pd.read_csv(RAW_DIR / "player_stats_validation_set.csv")
 
 # Merge player derived stats into team_df
 
@@ -50,4 +45,4 @@ team_df = team_df.merge(
 OUT = Path("processed")
 OUT.mkdir(exist_ok=True)
 
-team_df.to_csv(OUT / "team_combined.csv", index=False)
+team_df.to_csv(OUT / "team_combined_validation_set.csv", index=False)

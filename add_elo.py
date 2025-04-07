@@ -10,7 +10,7 @@ CLEAN_DIR = Path("processed/rolls")
 ELO_DIR = Path ("processed/elo")
 ELO_DIR.mkdir(exist_ok=True)
 
-df = pd.read_csv(CLEAN_DIR / "team_with_rolls.csv")
+df = pd.read_csv(CLEAN_DIR / "team_with_rolls_validation_set.csv")
 
 # Sort data by time of match
 
@@ -41,8 +41,4 @@ for idx, row in df.iterrows():
 
 df["pre_match_elo"] = (pd.Series(pre_ratings).round(0)).astype(int)
 
-df.to_csv(ELO_DIR / "team_with_elo.csv", index=False)  # Output to processed folder
-
-
-
-
+df.to_csv(ELO_DIR / "team_with_elo_validation_set.csv", index=False)  # Output to processed folder

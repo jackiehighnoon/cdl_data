@@ -140,7 +140,7 @@ def get_player_info(match, team_list, series_everything_elements):
     df = pd.DataFrame(data_values, columns=['match_id', 'player_name', 'team_name', 'kills', 'deaths', 'damage', 'bp_rtg'])
     return data_values
 
-def get_matches(driver):
+def get_matches(driver, start):
 
     """"
     CDL MINOR 1 Tournament: 93839-93849 // Online // ALL BO5
@@ -156,58 +156,77 @@ def get_matches(driver):
     team_data = []
     player_data = []
 
-    match_id_ranges = range(93815, 93957)
+    match = start
 
-    for match in match_id_ranges:
+    while True:
         driver.get(f"https://www.breakingpoint.gg/match/{match}")
-        match_id = match
-        iso = pd.to_datetime(driver.find_element(By.TAG_NAME, 'p').text, utc=True).isoformat()
-        tournament_name = driver.find_element(By.XPATH, "//div[contains(@class, 'css-1e7ynd8')]/div/div/a").text
-        maps = driver.find_elements(By.XPATH, "//div[contains(@class, 'css-jh7uq1')]/*[contains(@class, 'css-1ylx6zt')]/div/p")
-        map_list = [item.text for item in maps]
-        bestof_type = len(map_list)
 
-        team_names = driver.find_elements(By.XPATH, "//div[contains(@class, 'm_b0c91715')]/table/tbody/tr/td/a[contains(@href, 'teams')]")
-        team_list = [item.text for item in team_names]
-
-        map_count = driver.find_elements(By.XPATH, "//div[contains(@class, 'm_8bffd616')]/div[2]/p[contains(@class, 'css-i1vu1j m_b6d8b162')]")
-        total_maps_played = 0
-        for round in map_count:
-            total_maps_played += int(round.text)
-        total_rounds_list = [int(round.text) for round in map_count]
+        try:
+            upcoming = driver.find_element(By.XPATH, "//div[contains(@class, 'css-y8zqbt')]/button/span/span").text
+            if upcoming.casefold() == 'upcoming':
+                print(f'Match {match} is upcoming, ending scrape.')
+                break
+        except Exception:
+            pass
         
-        series_everything = driver.find_elements(By.XPATH, "//tbody/tr/td")
-        series_everything_elements = [element.text for element in series_everything if element.text not in ['',team_list[0],team_list[1]]]
+        try:
+            match_id = match
+            iso = pd.to_datetime(driver.find_element(By.TAG_NAME, 'p').text, utc=True).isoformat()
+            tournament_name = driver.find_element(By.XPATH, "//div[contains(@class, 'css-1e7ynd8')]/div/div/a").text
+            maps = driver.find_elements(By.XPATH, "//div[contains(@class, 'css-jh7uq1')]/*[contains(@class, 'css-1ylx6zt')]/div/p")
+            map_list = [item.text for item in maps]
+            bestof_type = len(map_list)
 
-        if len(map_list) == 7:
-            stage = 'major finals'
-            method = 1
-        elif 'major' and 'tournament' in tournament_name.lower():
-            stage = 'major'
-            method = 1
-        else:
-            stage = 'minor'
-            method = 0
+            team_names = driver.find_elements(By.XPATH, "//div[contains(@class, 'm_b0c91715')]/table/tbody/tr/td/a[contains(@href, 'teams')]")
+            team_list = [item.text for item in team_names]
 
-        meta_data.append({
-            'match_id': match_id,
-            'date_utc': iso,
-            'tournament': tournament_name,
-            'best_of': bestof_type,
-            'stage': stage,
-            'is_lan' : method
-        })
-        team_data.extend(get_matches_info(match, team_list, total_rounds_list, series_everything_elements))
-        player_data.extend(get_player_info(match, team_list, series_everything_elements))
-        print(f'Finished match {match_id}, {team_list[0]} vs {team_list[1]}')
+            map_count = driver.find_elements(By.XPATH, "//div[contains(@class, 'm_8bffd616')]/div[2]/p[contains(@class, 'css-i1vu1j m_b6d8b162')]")
+            total_maps_played = 0
+            for round in map_count:
+                total_maps_played += int(round.text)
+            total_rounds_list = [int(round.text) for round in map_count]
+            
+            series_everything = driver.find_elements(By.XPATH, "//tbody/tr/td")
+            series_everything_elements = [element.text for element in series_everything if element.text not in ['',team_list[0],team_list[1]]]
 
+            if len(map_list) == 7:
+                stage = 'major finals'
+                method = 1
+            elif 'major' and 'tournament' in tournament_name.lower():
+                stage = 'major'
+                method = 1
+            else:
+                stage = 'minor'
+                method = 0
+
+            meta_data.append({
+                'match_id': match_id,
+                'date_utc': iso,
+                'tournament': tournament_name,
+                'best_of': bestof_type,
+                'stage': stage,
+                'is_lan' : method
+            })
+            team_data.extend(get_matches_info(match, team_list, total_rounds_list, series_everything_elements))
+            player_data.extend(get_player_info(match, team_list, series_everything_elements))
+            print(f'Finished match {match_id}, {team_list[0]} vs {team_list[1]}')
+        except Exception as e:
+            print(f'Error processing match {match}: {e}')
+        
+        match += 1
     return meta_data, team_data, player_data
-    
-meta, teams, players = get_matches(driver)
 
 out_dir = Path("raw_tables")
 out_dir.mkdir(exist_ok=True)
+    
+""" meta, teams, players = get_matches(driver, 93815, 93957)
 
 pd.DataFrame(meta).to_csv(out_dir / "meta.csv",    index=False)
 pd.DataFrame(teams).to_csv(out_dir / "team_series.csv", index=False)
-pd.DataFrame(players).to_csv(out_dir / "player_stats.csv", index=False)
+pd.DataFrame(players).to_csv(out_dir / "player_stats.csv", index=False) """
+
+meta_validation_set, team_validation_set, player_validation_set = get_matches(driver, 93960)
+
+""" pd.DataFrame(meta_validation_set).to_csv(out_dir / "meta_validation_set.csv",    index=False)
+pd.DataFrame(team_validation_set).to_csv(out_dir / "team_series_validation_set.csv", index=False)
+pd.DataFrame(player_validation_set).to_csv(out_dir / "player_stats_validation_set.csv", index=False) """

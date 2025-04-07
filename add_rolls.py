@@ -9,12 +9,13 @@ CLEAN_DIR = Path("processed")
 ROLL_DIR = Path ("processed/rolls")
 ROLL_DIR.mkdir(exist_ok=True)
 
-df = pd.read_csv(CLEAN_DIR / "team_combined.csv")
+df = pd.read_csv(CLEAN_DIR / "team_combined_validation_set.csv")
 
 ROLL_COLS = ["series_kills", "series_deaths", "series_damage", "series_kdr", "avg_bp_rtg","bp_std","bp_max","top_kills_share","bp_range"]
 
 def add_rolls(df: pd.DataFrame, roll: int=ROLL):
     df = df.sort_values(["team_name","date_utc"]).reset_index(drop=True)
+    print(df)
 
     rolling = (
         df.groupby(["team_name"])[ROLL_COLS]
@@ -24,8 +25,10 @@ def add_rolls(df: pd.DataFrame, roll: int=ROLL):
     )
 
     rolling = rolling.rename(columns={col: f"{col}_roll" for col in ROLL_COLS})
+    print(rolling)
 
     df = df.merge(rolling, left_index=True, right_on="level_1").drop(columns=["level_1"])
+    print(df)
 
     df = df.dropna(subset=[f"{col}_roll" for col in ROLL_COLS]).reset_index(drop=True)
     return df
@@ -35,4 +38,4 @@ df = add_rolls(df, ROLL)
 df = df.drop(columns=["team_name_y"]).rename(columns={"team_name_x": "team_name"})
 
 # Output to processed folder
-df.round(4).to_csv(ROLL_DIR / "team_with_rolls.csv", index=False)
+df.round(4).to_csv(ROLL_DIR / "team_with_rolls_validation_set.csv", index=False)

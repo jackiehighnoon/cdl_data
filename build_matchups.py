@@ -8,9 +8,9 @@ ELO_DIR = Path("processed/elo")
 MATCHUP_DIR = Path("processed/single_matchups")
 MATCHUP_DIR.mkdir(exist_ok=True)
 
-in_path = ELO_DIR / "team_with_elo.csv"
-out_path_x = MATCHUP_DIR / "matchup_features.csv"
-out_path_y = MATCHUP_DIR / "labels.csv"
+in_path = ELO_DIR / "team_with_elo_validation_set.csv"
+out_path_x = MATCHUP_DIR / "matchup_features_validation_set.csv"
+out_path_y = MATCHUP_DIR / "labels_validation_set.csv"
 
 
 df = pd.read_csv(in_path, parse_dates=["date_utc"])

@@ -140,7 +140,7 @@ def get_player_info(match, team_list, series_everything_elements):
     df = pd.DataFrame(data_values, columns=['match_id', 'player_name', 'team_name', 'kills', 'deaths', 'damage', 'bp_rtg'])
     return data_values
 
-def get_matches(driver, start):
+def get_matches(driver, start=93815):
 
     """"
     CDL MINOR 1 Tournament: 93839-93849 // Online // ALL BO5

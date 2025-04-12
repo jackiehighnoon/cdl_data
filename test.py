@@ -1,12 +1,17 @@
-from data_pipeline import DataCollection
+from data_pipeline import DataPipeline
 
 def main():
-    collector = DataCollection()
-    # Scrape data from breakpoint, 93815 is the first match ID
-    meta_data, team_data, player_data = collector.get_matches(start=93956)
+    # Instantiate the DataPipeline
+    pipeline = DataPipeline()
     
-    # At this point, check manually (or using print statements) that CSV files were generated.
-    print("Data collection complete. Please check the 'processed' directory for output CSVs.")
+    # Run the web scraper method which scrapes data and saves raw CSVs into the in_dir
+    upcoming_match, meta_data, team_data, player_data = pipeline.web_scraper(93965)
+    print("Web scraping complete. Raw data files have been saved to the designated in_dir.")
+    print(f"Upcoming match: {upcoming_match}")
+    
+    # Run the data processing method which processes data and saves intermediate and final results
+    X, y = pipeline.data_processing()
+    print("Data processing complete. Processed files have been saved in the out_dir and its intermediate folder.")
 
 if __name__ == "__main__":
     main()

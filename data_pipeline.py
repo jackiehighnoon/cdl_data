@@ -131,7 +131,6 @@ class DataCollection:
             
                 data_values.append(data)
 
-        df = pd.DataFrame(data_values, columns=['match_id', 'player_name', 'team_name', 'kills', 'deaths', 'damage', 'bp_rtg'])
         return data_values
 
     def get_matches(self, start=93815):
@@ -420,3 +419,140 @@ class DataPipeline(DataCleanser):
         y.round(4).to_csv(y_path, index=False)
 
         return X, y
+    
+class UpcomingMatchCollection(DataCollection):
+    def __init__(self):
+        super().__init__()
+
+    def get_upcoming_match(self, match_id: int):
+        url = f"https://www.breakingpoint.gg/match/{match_id}"
+        self.driver.get(url)
+        self.match_id = match_id
+        
+        try:
+            # Check if the match status indicates it's upcoming.
+            status_element = self.driver.find_element(By.XPATH, "//div[contains(@class, 'css-y8zqbt')]/button/span/span")
+            status_text = status_element.text.strip()
+            if status_text.casefold() != "upcoming":
+                print(f"Match {match_id} is not upcoming: status is completed.")
+                return None
+        except Exception as e:
+            print(f"Could not verify match status for match {match_id}: {e}")
+            return None
+        
+        try:
+            iso = pd.to_datetime(self.driver.find_element(By.TAG_NAME, 'p').text, utc=True).isoformat()
+            tournament_name = self.driver.find_element(By.XPATH, "//div[contains(@class, 'css-1e7ynd8')]/div/div/a").text
+            maps = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'css-jh7uq1')]/div/div")
+            map_list = [item.text for item in maps]
+            bestof_type = len(map_list)
+
+            team_names = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'css-1nkbb35') or contains(@class,'css-89bxeg')]/div/div/a[contains(@href, 'teams')]")
+            team_list = [item.text for item in team_names]
+            
+            if len(map_list) == 7:
+                stage = 'major finals'
+                method = 1
+            elif 'major' and 'tournament' in tournament_name.lower():
+                stage = 'major'
+                method = 1
+            else:
+                stage = 'minor'
+                method = 0
+
+            match_data = {
+                'match_id': match_id,
+                'date_utc': iso,
+                'tournament': tournament_name,
+                'best_of': bestof_type,
+                'stage': stage,
+                'is_lan' : method
+            }
+
+            match_df = pd.DataFrame([match_data])
+            team_df = pd.DataFrame({
+            'match_id': [match_id] * len(team_list),
+            'team_name': team_list
+            })
+            
+            # Merge the team list with the match metadata on match_id
+            upcoming_df = team_df.merge(match_df, on="match_id", how="left")
+
+            # Merge rolling and ELO statistics
+            # Load the historical data (data_with_elo.csv) and parse date_utc as datetime
+            historical_df = pd.read_csv("processed_data/statistics/data_with_elo.csv", parse_dates=["date_utc"])
+
+            # Define the columns you need
+            cols_to_keep = [
+                "team_name", 
+                "series_kills_roll", "series_deaths_roll", "series_damage_roll", 
+                "series_kdr_roll", "avg_bp_rtg_roll", "bp_std_roll", 
+                "bp_max_roll", "top_kills_share_roll", "bp_range_roll", 
+                "pre_match_elo"
+            ]
+
+            # Sort by date and group by team_name to get the latest record for each team
+            latest_team_metrics = (
+                historical_df.sort_values("date_utc")
+                            .groupby("team_name", as_index=False)
+                            .last()[cols_to_keep]
+            )
+
+            final_upcoming = upcoming_df.merge(latest_team_metrics, how="left", on="team_name")
+
+            #final_upcoming.round(4).to_csv("upcoming.csv", index=False)
+
+            team_a = final_upcoming.copy()
+            team_b = final_upcoming.copy()
+
+            team_a.columns = [f"team_a_{col}" if col != "match_id" else col for col in team_a.columns]
+            team_b.columns = [f"team_b_{col}" if col != "match_id" else col for col in team_b.columns]
+
+            matchups = team_a.merge(team_b, on="match_id", suffixes=("_a", "_b"))
+            matchups = matchups[matchups["team_a_team_name"] != matchups["team_b_team_name"]]
+
+            # Keep only one direction per match
+            matchups = matchups[matchups["team_a_team_name"] < matchups["team_b_team_name"]]
+
+            # Creating differential columns for all relevant metrics
+
+            matchups["elo_diff"] = matchups["team_a_pre_match_elo"] - matchups["team_b_pre_match_elo"]
+            matchups["series_kills_roll_diff"] = matchups["team_a_series_kills_roll"] - matchups["team_b_series_kills_roll"]
+            matchups["series_deaths_roll_diff"] = matchups["team_a_series_deaths_roll"] - matchups["team_b_series_deaths_roll"]
+            matchups["series_damage_roll_diff"] = matchups["team_a_series_damage_roll"] - matchups["team_b_series_damage_roll"]
+            matchups["series_kdr_roll_diff"] = matchups["team_a_series_kdr_roll"] - matchups["team_b_series_kdr_roll"]
+            matchups["bp_rating_roll_diff"] = matchups["team_a_avg_bp_rtg_roll"] - matchups["team_b_avg_bp_rtg_roll"]
+            matchups["bp_std_roll_diff"] = matchups["team_a_bp_std_roll"] - matchups["team_b_bp_std_roll"]
+            matchups["bp_max_roll_diff"] = matchups["team_a_bp_max_roll"] - matchups["team_b_bp_max_roll"]
+            matchups["top_kills_share_roll_diff"] = matchups["team_a_top_kills_share_roll"] - matchups["team_b_top_kills_share_roll"]
+            matchups["bp_range_roll_diff"] = matchups["team_a_bp_range_roll"] - matchups["team_b_bp_range_roll"]
+            matchups["best_of"] = matchups["team_a_best_of"]
+            matchups["is_lan"] = matchups["team_a_is_lan"]
+
+            feature_cols = [
+                "match_id",
+                "team_a_team_name",
+                "team_b_team_name",
+                "best_of",
+                "is_lan",
+                "elo_diff",
+                "series_kills_roll_diff",
+                "series_deaths_roll_diff",
+                "series_damage_roll_diff",
+                "series_kdr_roll_diff",
+                "bp_rating_roll_diff",
+                "bp_std_roll_diff",
+                "bp_max_roll_diff",
+                "top_kills_share_roll_diff",
+                "bp_range_roll_diff",
+                # Optionally, add any label columns or additional identifiers you need
+            ]
+
+            X = matchups[feature_cols]
+    
+            # Add any additional pre-match details as needed.
+        except Exception as e:
+            print(f"Error processing upcoming match {match_id}: {e}")
+            return None
+
+        return X

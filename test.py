@@ -1,7 +1,7 @@
-from data_pipeline import DataPipeline
+from data_pipeline import DataPipeline, UpcomingMatchCollection
 
 def main():
-    # Instantiate the DataPipeline
+    """ # Instantiate the DataPipeline
     pipeline = DataPipeline()
     
     # Run the web scraper method which scrapes data and saves raw CSVs into the in_dir
@@ -11,7 +11,13 @@ def main():
     
     # Run the data processing method which processes data and saves intermediate and final results
     X, y = pipeline.data_processing()
-    print("Data processing complete. Processed files have been saved in the out_dir and its intermediate folder.")
+    print("Data processing complete. Processed files have been saved in the out_dir and its intermediate folder.") """
+
+    upcoming = UpcomingMatchCollection()
+
+    upcoming_data = upcoming.get_upcoming_match(93970)
+
+    print(upcoming_data)
 
 if __name__ == "__main__":
     main()

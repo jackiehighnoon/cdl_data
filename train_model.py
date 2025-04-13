@@ -17,7 +17,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # Define the objective function for Optuna
 def objective(trial):
     # Suggest hyperparameters for the RandomForestClassifier
-    n_estimators = trial.suggest_int("n_estimators", 50, 300)
+    n_estimators = trial.suggest_int("n_estimators", 100, 500)
+    max_depth = trial.suggest_int("max_depth",5,30)
     max_features = trial.suggest_categorical("max_features", ["sqrt", "log2", None])
     min_samples_leaf = trial.suggest_int("min_samples_leaf", 1, 10)
     min_samples_split = trial.suggest_int("min_samples_split", 2, 20)
@@ -26,6 +27,7 @@ def objective(trial):
     # Create the model with the suggested hyperparameters
     model = RandomForestClassifier(
         n_estimators=n_estimators,
+        max_depth=max_depth,
         max_features=max_features,
         min_samples_leaf=min_samples_leaf,
         min_samples_split=min_samples_split,
@@ -44,19 +46,23 @@ study.optimize(objective, n_trials=100)
 print("Best hyperparameters: ", study.best_params)
 print("Best accuracy: ", study.best_value)
 
-rf_model = RandomForestClassifier(**study.best_params)
-rf_model.fit(X_train, y_train)
+# Train the final model using the best parameters:
+best_params = study.best_params
+final_clf = RandomForestClassifier(
+    **best_params, random_state=42, n_jobs=-1
+)
+final_clf.fit(X, y)
 
-joblib.dump(rf_model, "model.pkl")
+joblib.dump(final_clf, "model.pkl")
 print("Model saved to model.pkl")
 
-next_match = pd.read_csv("prediction.csv")
+""" next_match = pd.read_csv("prediction.csv")
 
 next_match = next_match.drop(columns=["team_a_team_name", "team_b_team_name"])
 
 prediction = rf_model.predict(next_match)
 
-print(prediction)
+print(prediction) """
 
 """ # metrics specific to classification
 accuracy_score(y_test, y_pred)

@@ -480,7 +480,7 @@ class UpcomingMatchCollection(DataCollection):
 
             # Merge rolling and ELO statistics
             # Load the historical data (data_with_elo.csv) and parse date_utc as datetime
-            historical_df = pd.read_csv("processed_data/statistics/data_with_elo.csv", parse_dates=["date_utc"])
+            historical_df = pd.read_csv("processed_data/intermediate/data_with_elo.csv", parse_dates=["date_utc"])
 
             # Define the columns you need
             cols_to_keep = [
@@ -530,9 +530,6 @@ class UpcomingMatchCollection(DataCollection):
             matchups["is_lan"] = matchups["team_a_is_lan"]
 
             feature_cols = [
-                "match_id",
-                "team_a_team_name",
-                "team_b_team_name",
                 "best_of",
                 "is_lan",
                 "elo_diff",

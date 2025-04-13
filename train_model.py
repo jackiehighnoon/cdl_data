@@ -7,9 +7,9 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 import joblib
 
 # Assign the path to the CSV file
-X = pd.read_csv("processed/single_matchups/matchup_features.csv")
+X = pd.read_csv("processed_data/X.csv")
 X = X.select_dtypes(include=[int, float])
-y = pd.read_csv("processed/single_matchups/labels.csv").squeeze("columns")
+y = pd.read_csv("processed_data/y.csv").squeeze("columns")
 
 #Split data into features and labels
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -49,6 +49,14 @@ rf_model.fit(X_train, y_train)
 
 joblib.dump(rf_model, "model.pkl")
 print("Model saved to model.pkl")
+
+next_match = pd.read_csv("prediction.csv")
+
+next_match = next_match.drop(columns=["team_a_team_name", "team_b_team_name"])
+
+prediction = rf_model.predict(next_match)
+
+print(prediction)
 
 """ # metrics specific to classification
 accuracy_score(y_test, y_pred)
